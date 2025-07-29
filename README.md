@@ -14,15 +14,16 @@ The key goals of this project:
 - Serve as a foundation for adding future data processing frameworks like Flink, Spark, or Airflow.
 
 ---
-
 ## Architecture Overview
 
-+---------------+-------------+ Producers | -----> | Kafka | ----+--------------+--------------+
-| | | | | | |
-| | | v | | |
-| | | +----------------+ | | |
-| PostgreSQL | <-----------+ | Kibana | <-----+ Elasticsearch| <---- Queries|
-+---------------+-------------+ +--------------+--------------+
+```text
++----------------+-------------+    Producers    | -----> | Kafka | ----+--------------+--------------+
+|                |             |                              |              |              |              |
+|                |             |                              v              |              |              |
+|                |             |          +----------------+       |              |              |
+|   PostgreSQL   | <-----------+          |   Kibana      | <-----+  Elasticsearch  | <---- Queries |
++----------------+-------------+                    +--------------+--------------+
+
 
 ---
 
