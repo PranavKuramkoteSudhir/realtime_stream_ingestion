@@ -13,6 +13,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   broker:
     image: confluentinc/cp-kafka:7.4.0
     hostname: broker
@@ -41,6 +42,7 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
   postgres:
     image: postgres:latest
     container_name: postgres
@@ -50,11 +52,14 @@ services:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: mydb
+    volumes:
+      - /Users/pranavks/Desktop/Projects/stream_ingestion/postgres/DB_init.sql:/docker-entrypoint-initdb.d/DB_init.sql
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "user"]
+      test: ["CMD", "pg_isready", "-U", "user", "-d", "mydb"]
       interval: 10s
       timeout: 5s
       retries: 5
+
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
     container_name: elasticsearch
@@ -63,11 +68,10 @@ services:
     environment:
       - xpack.security.enabled=false
       - discovery.type=single-node
-  
+
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.1
     container_name: kibana
-
     ports:
       - "5601:5601"
     depends_on:
@@ -75,4 +79,48 @@ services:
     environment:
       ELASTICSEARCH_HOSTS: http://elasticsearch:9200
 
+  jobmanager:
+    image: flink:1.19-scala_2.12-java11
+    container_name: flink-jobmanager
+    hostname: jobmanager
+    ports:
+      - "8081:8081"
+    command: bash -c "cp /extra-jars/*.jar /opt/flink/lib/ && exec /docker-entrypoint.sh jobmanager"
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    volumes:
+      - /Users/pranavks/Desktop/Projects/stream_ingestion/flink:/opt/flink/sql
+      - /Users/pranavks/Desktop/Projects/stream_ingestion/jars:/extra-jars
 
+    depends_on:
+      - broker
+      - postgres
+      - elasticsearch
+
+  taskmanager:
+    image: flink:1.19-scala_2.12-java11
+    container_name: flink-taskmanager
+    hostname: taskmanager
+    command: bash -c "cp /extra-jars/*.jar /opt/flink/lib/ && exec /docker-entrypoint.sh taskmanager"
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    volumes:
+      - /Users/pranavks/Desktop/Projects/stream_ingestion/flink:/opt/flink/sql
+      - /Users/pranavks/Desktop/Projects/stream_ingestion/jars:/extra-jars
+
+    depends_on:
+      - jobmanager
+
+  taskmanager2:
+    image: flink:1.19-scala_2.12-java11
+    container_name: flink-taskmanager2
+    hostname: taskmanager2
+    command: bash -c "cp /extra-jars/*.jar /opt/flink/lib/ && exec /docker-entrypoint.sh taskmanager"
+    environment:
+      - JOB_MANAGER_RPC_ADDRESS=jobmanager
+    volumes:
+      - /Users/pranavks/Desktop/Projects/stream_ingestion/flink:/opt/flink/sql
+      - /Users/pranavks/Desktop/Projects/stream_ingestion/jars:/extra-jars
+    
+    depends_on:
+      - jobmanager
