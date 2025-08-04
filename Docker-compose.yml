@@ -1,4 +1,3 @@
-version: '3.8'
 services:
   zookeeper:
     image: confluentinc/cp-zookeeper:latest
@@ -22,7 +21,7 @@ services:
       zookeeper:
         condition: service_healthy
     ports:
-      - "9092:9092"
+      - "${KAFKA_PORT:-9092}:9092"
       - "9101:9101"
     environment:
       KAFKA_BROKER_ID: 1
@@ -47,15 +46,16 @@ services:
     image: postgres:latest
     container_name: postgres
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     environment:
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: mydb
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - /Users/pranavks/Desktop/Projects/stream_ingestion/postgres/DB_init.sql:/docker-entrypoint-initdb.d/DB_init.sql
+      - ${PROJECT_ROOT}/db_conf:/docker-entrypoint-initdb.d:ro
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD", "pg_isready", "-U", "user", "-d", "mydb"]
+      test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -64,10 +64,12 @@ services:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.11.1
     container_name: elasticsearch
     ports:
-      - "9200:9200"
+      - "${ELASTICSEARCH_PORT:-9200}:9200"
     environment:
       - xpack.security.enabled=false
       - discovery.type=single-node
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
 
   kibana:
     image: docker.elastic.co/kibana/kibana:8.11.1
@@ -77,10 +79,10 @@ services:
     depends_on:
       - elasticsearch
     environment:
-      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      ELASTICSEARCH_HOSTS: http://${ELASTICSEARCH_HOST}:${ELASTICSEARCH_PORT}
 
   jobmanager:
-    image: flink:1.19-scala_2.12-java11
+    image: flink:1.17.2-scala_2.12-java11
     container_name: flink-jobmanager
     hostname: jobmanager
     ports:
@@ -88,39 +90,46 @@ services:
     command: bash -c "cp /extra-jars/*.jar /opt/flink/lib/ && exec /docker-entrypoint.sh jobmanager"
     environment:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - HADOOP_CONF_DIR=/opt/flink/conf
     volumes:
-      - /Users/pranavks/Desktop/Projects/stream_ingestion/flink:/opt/flink/sql
-      - /Users/pranavks/Desktop/Projects/stream_ingestion/jars:/extra-jars
-
+      - ${PROJECT_ROOT}/flink:/opt/flink/sql
+      - ${PROJECT_ROOT}/jars:/extra-jars
+      - ${PROJECT_ROOT}/config/config.yaml:/opt/flink/conf/config.yaml
     depends_on:
       - broker
       - postgres
       - elasticsearch
 
   taskmanager:
-    image: flink:1.19-scala_2.12-java11
+    image: flink:1.17.2-scala_2.12-java11
     container_name: flink-taskmanager
     hostname: taskmanager
     command: bash -c "cp /extra-jars/*.jar /opt/flink/lib/ && exec /docker-entrypoint.sh taskmanager"
     environment:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - HADOOP_CONF_DIR=/opt/flink/conf
     volumes:
-      - /Users/pranavks/Desktop/Projects/stream_ingestion/flink:/opt/flink/sql
-      - /Users/pranavks/Desktop/Projects/stream_ingestion/jars:/extra-jars
-
+      - ${PROJECT_ROOT}/flink:/opt/flink/sql
+      - ${PROJECT_ROOT}/jars:/extra-jars
+      - ${PROJECT_ROOT}/config/config.yaml:/opt/flink/conf/config.yaml
     depends_on:
       - jobmanager
 
   taskmanager2:
-    image: flink:1.19-scala_2.12-java11
+    image: flink:1.17.2-scala_2.12-java11
     container_name: flink-taskmanager2
     hostname: taskmanager2
     command: bash -c "cp /extra-jars/*.jar /opt/flink/lib/ && exec /docker-entrypoint.sh taskmanager"
     environment:
       - JOB_MANAGER_RPC_ADDRESS=jobmanager
+      - HADOOP_CONF_DIR=/opt/flink/conf
     volumes:
-      - /Users/pranavks/Desktop/Projects/stream_ingestion/flink:/opt/flink/sql
-      - /Users/pranavks/Desktop/Projects/stream_ingestion/jars:/extra-jars
-    
+      - ${PROJECT_ROOT}/flink:/opt/flink/sql
+      - ${PROJECT_ROOT}/jars:/extra-jars
+      - ${PROJECT_ROOT}/config/config.yaml:/opt/flink/conf/config.yaml
     depends_on:
       - jobmanager
+
+volumes:
+  es_data:
+  postgres_data:
