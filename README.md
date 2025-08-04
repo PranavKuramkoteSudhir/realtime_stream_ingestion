@@ -2,6 +2,9 @@
 
 A complete real-time data streaming pipeline that simulates e-commerce events (clicks and checkouts), enriches them with customer and product data, and indexes them for analytics.
 
+
+![Screen Recording 2025-07-31 at 9 28 09 AM(1)](https://github.com/user-attachments/assets/a468dd67-8303-46f1-908c-f9ac0fdc5936)
+
 ## Architecture
 
 ```
